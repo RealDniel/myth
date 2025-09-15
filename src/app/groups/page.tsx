@@ -83,7 +83,7 @@ export default function Groups() {
   }
 
   return (
-    <div className="mt-40 p-6">
+    <div className="mt-20 p-6">
       <h1 className="text-2xl font-bold mb-6">Welcome</h1>
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">

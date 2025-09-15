@@ -57,14 +57,14 @@ export default function AuthPage() {
 
       <div className="flex gap-4">
         <button
-          className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50"
+          className="bg-[var(--primary1)] text-white px-4 py-2 rounded disabled:opacity-50"
           onClick={handleLogin}
           disabled={loading}
         >
           Login
         </button>
         <button
-          className="bg-green-600 text-white px-4 py-2 rounded disabled:opacity-50"
+          className="bg-[var(--primary3)] text-white px-4 py-2 rounded disabled:opacity-50"
           onClick={handleSignUp}
           disabled={loading}
         >
@@ -72,7 +72,7 @@ export default function AuthPage() {
         </button>
 
         <button
-          className="bg-red-600 text-white px-4 py-2 rounded disabled:opacity-50"
+          className="bg-[var(--primary2)] text-white px-4 py-2 rounded disabled:opacity-50"
           onClick={handleLogOut}
           disabled={loading}
         >

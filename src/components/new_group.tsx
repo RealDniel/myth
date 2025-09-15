@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabaseClient"
 interface NewGroupModalProps {
   userId: string
   onClose: () => void
-  onGroupCreated: (group: { id: string; name: string; savings_goal: number }) => void
+  onGroupCreated: (group: { id: string; name: string; savings_goal: number; savings_curr: number }) => void
 }
 
 export default function NewGroupModal({ userId, onClose, onGroupCreated }: NewGroupModalProps) {
@@ -15,7 +15,7 @@ export default function NewGroupModal({ userId, onClose, onGroupCreated }: NewGr
   const [loading, setLoading] = useState(false)
 
   const handleSubmit = async () => {
-    if (!name || goal === "" || goal < 0 || goal > 100) {
+    if (!name || goal === "") {
       alert("Please enter valid group name and goal")
       return
     }
@@ -54,7 +54,7 @@ export default function NewGroupModal({ userId, onClose, onGroupCreated }: NewGr
   }
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+    <div className="fixed inset-0 flex items-center justify-center bg-black/80 z-50">
       <div className="bg-black border border-color-white rounded-xl p-6 w-96 shadow-lg">
         <h2 className="text-xl font-bold mb-4">Create New Group</h2>
 

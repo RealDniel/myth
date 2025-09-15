@@ -3,16 +3,13 @@
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabaseClient"
 import NewGroupModal from "@/components/new_group"
+import Link from "next/link"
 
 interface Group {
   id: string
   name: string
   savings_goal: number
-}
-
-interface GroupMemberRow {
-  group_id: string
-  groups: Group[]
+  savings_curr: number
 }
 
 export default function Groups() {
@@ -34,21 +31,36 @@ export default function Groups() {
 
       setUser(user)
 
-      const { data, error } = await supabase
+      // Step 1: Get group IDs the user belongs to
+      const { data: membershipData, error: membershipError } = await supabase
         .from("group_members")
-        .select(`
-          group_id,
-          groups!inner(id, name, savings_goal)
-        `)
+        .select("group_id")
         .eq("user_id", user.id)
 
-      if (error) {
-        console.error(error)
-      } else if (data) {
-        const userGroups: Group[] = (data as GroupMemberRow[])
-          .map((item) => item.groups[0])
-          .filter(Boolean)
-        setGroups(userGroups)
+      if (membershipError) {
+        console.error(membershipError)
+        setLoading(false)
+        return
+      }
+
+      const groupIds = membershipData?.map((row) => row.group_id) || []
+
+      if (groupIds.length === 0) {
+        setGroups([])
+        setLoading(false)
+        return
+      }
+
+      // Step 2: Fetch groups by IDs
+      const { data: groupsData, error: groupsError } = await supabase
+        .from("groups")
+        .select("*")
+        .in("id", groupIds)
+
+      if (groupsError) {
+        console.error(groupsError)
+      } else {
+        setGroups(groupsData || [])
       }
 
       setLoading(false)
@@ -76,21 +88,22 @@ export default function Groups() {
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {groups.map((group) => (
-          <div
-            key={group.id}
-            className="h-64 rounded-xl border border-white bg-black p-4 shadow-sm hover:shadow-md transition cursor-pointer"
-          >
-            <h2 className="text-xl font-bold mb-3">{group.name}</h2>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div
-                className="bg-[var(--primary1)] h-2 rounded-full"
-                style={{ width: `${group.savings_goal}%` }}
-              />
+          <Link key={group.id} href={`/groups/${group.id}`}>
+            <div className="h-64 rounded-xl border border-white bg-black p-4 shadow-sm hover:shadow-md transition cursor-pointer">
+              <h2 className="text-xl font-bold mb-3">{group.name}</h2>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className="bg-[var(--primary1)] h-2 rounded-full"
+                  style={{
+                    width: `${(group.savings_curr / group.savings_goal) * 100}%`,
+                  }}
+                />
+              </div>
+              <p className="text-sm text-gray-500 mt-2">
+                {Math.round((group.savings_curr / group.savings_goal) * 100)}% saved
+              </p>
             </div>
-            <p className="text-sm text-gray-500 mt-2">
-              {group.savings_goal}% saved
-            </p>
-          </div>
+          </Link>
         ))}
 
         {/* Add New Group Card */}

@@ -10,7 +10,6 @@ export default function Navbar() {
             <div className="space-x-6 text-sm sm:text-base">
                 <Link href="/groups" className="hover:text-[var(--navbar-hover)]">Groups</Link>
                 <Link href="/auth" className="hover:text-[var(--navbar-hover)]">Auth</Link>
-                <Link href="/" className="hover:text-[var(--navbar-hover)]">Feed</Link>
             </div>
         </nav>
     );

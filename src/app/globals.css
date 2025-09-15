@@ -11,6 +11,10 @@
   --navbarbackground: #000000;
   --navbarforeground: #ffffff;
   --navbarhover: #005d3c;
+
+  --primary1: #003B2E;
+  --primary2: #341539;
+  --primary3: #1b263b;
 }
 
 @theme inline {

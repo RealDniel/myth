@@ -8,7 +8,7 @@ export default function Home() {
           Designed to get you where you want to go. Whether you need help budgeting, or just want ideas for your next big trip, travelling the world has never been easier.
         </p>
         <button className="relative px-6 py-3 font-semibold text-white rounded-lg overflow-hidden z-10 hover:scale-105 transition">
-          <span className="absolute inset-0 animate-gradient bg-[length:200%_200%] bg-gradient-to-r from-[#003B2E] via-[#1b263b] to-[#341539] rounded-lg"></span>
+          <span className="absolute inset-0 animate-gradient bg-[length:200%_200%] bg-gradient-to-r from-[var(--primary1)] via-[var(--primary3)] to-[var(--primary2)] rounded-lg"></span>
           <span className="relative z-10">Get Started</span>
         </button>
       </section>

@@ -12,6 +12,10 @@ interface Group {
   savings_curr: number
 }
 
+interface Membership {
+  group_id: string
+}
+
 export default function Groups() {
   const [groups, setGroups] = useState<Group[]>([])
   const [loading, setLoading] = useState(true)
@@ -20,30 +24,43 @@ export default function Groups() {
 
   useEffect(() => {
     const fetchGroups = async () => {
+      // ✅ get full session
       const {
-        data: { user },
-      } = await supabase.auth.getUser()
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
 
-      if (!user) {
+      if (sessionError) {
+        console.error("Error fetching session:", sessionError)
         setLoading(false)
         return
       }
 
-      setUser(user)
+      const currentUser = session?.user
+      if (!currentUser) {
+        setUser(null)
+        setLoading(false)
+        return
+      }
 
-      // Step 1: Get group IDs the user belongs to
+      setUser(currentUser)
+
+      // ✅ Step 1: Get memberships (not removed)
       const { data: membershipData, error: membershipError } = await supabase
         .from("group_members")
         .select("group_id")
-        .eq("user_id", user.id)
+        .eq("user_id", currentUser.id)
+        .is("removed_at", null)
 
       if (membershipError) {
-        console.error(membershipError)
+        console.error("Error fetching memberships:", membershipError)
         setLoading(false)
         return
       }
 
-      const groupIds = membershipData?.map((row) => row.group_id) || []
+      const groupIds = (membershipData as Membership[])?.map(
+        (row) => row.group_id
+      ) || []
 
       if (groupIds.length === 0) {
         setGroups([])
@@ -51,14 +68,15 @@ export default function Groups() {
         return
       }
 
-      // Step 2: Fetch groups by IDs
+      // ✅ Step 2: Fetch group details
       const { data: groupsData, error: groupsError } = await supabase
         .from("groups")
         .select("*")
         .in("id", groupIds)
 
       if (groupsError) {
-        console.error(groupsError)
+        console.error("Error fetching groups:", groupsError)
+        setGroups([])
       } else {
         setGroups(groupsData || [])
       }
@@ -86,37 +104,50 @@ export default function Groups() {
     <div className="mt-20 p-6">
       <h1 className="text-2xl font-bold mb-6">Welcome</h1>
 
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        {groups.map((group) => (
-          <Link key={group.id} href={`/groups/${group.id}`}>
-            <div className="h-64 rounded-xl border border-white bg-black p-4 shadow-sm hover:shadow-md transition cursor-pointer">
-              <h2 className="text-xl font-bold mb-3">{group.name}</h2>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-[var(--primary1)] h-2 rounded-full"
-                  style={{
-                    width: `${(group.savings_curr / group.savings_goal) * 100}%`,
-                  }}
-                />
-              </div>
-              <p className="text-sm text-gray-500 mt-2">
-                {Math.round((group.savings_curr / group.savings_goal) * 100)}% saved
-              </p>
-            </div>
-          </Link>
-        ))}
+      {groups.length === 0 ? (
+        <p className="text-center text-gray-400 mb-6">
+          You don’t have any groups yet.
+        </p>
+      ) : (
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {groups.map((group) => {
+            const percent =
+              group.savings_goal > 0
+                ? Math.round(
+                    (group.savings_curr / group.savings_goal) * 100
+                  )
+                : 0
 
-        {/* Add New Group Card */}
-        <div
-          onClick={() => setIsModalOpen(true)}
-          className="rounded-xl border-2 border-dashed border-white bg-black p-6 flex items-center justify-center h-64 cursor-pointer hover:bg-gray-500 transition"
-        >
-          <div className="flex flex-col items-center">
-            <span className="text-4xl text-white">+</span>
-            <p className="mt-2 text-lg text-white">Add new group</p>
+            return (
+              <Link key={group.id} href={`/groups/${group.id}`}>
+                <div className="h-64 rounded-xl border border-white bg-black p-4 shadow-sm hover:shadow-md transition cursor-pointer">
+                  <h2 className="text-xl font-bold mb-3">{group.name}</h2>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-[var(--primary1)] h-2 rounded-full"
+                      style={{
+                        width: `${percent}%`,
+                      }}
+                    />
+                  </div>
+                  <p className="text-sm text-gray-500 mt-2">{percent}% saved</p>
+                </div>
+              </Link>
+            )
+          })}
+
+          {/* Add New Group Card */}
+          <div
+            onClick={() => setIsModalOpen(true)}
+            className="rounded-xl border-2 border-dashed border-white bg-black p-6 flex items-center justify-center h-64 cursor-pointer hover:bg-gray-500 transition"
+          >
+            <div className="flex flex-col items-center">
+              <span className="text-4xl text-white">+</span>
+              <p className="mt-2 text-lg text-white">Add new group</p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {isModalOpen && (
         <NewGroupModal

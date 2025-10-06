@@ -51,35 +51,58 @@ export async function POST(req: Request) {
       .select("*")
       .eq("group_id", invite.group_id)
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
-    if (prevErr && (prevErr as any).code !== "PGRST116") {
-      // if there's an unexpected error (not 'no rows'), fail
+    if (prevErr) {
       console.error("error checking previous membership:", prevErr);
       return NextResponse.json({ error: "Server error" }, { status: 500 });
     }
 
-    if (prevMembership) {
-      // If exists and removed_at set -> block rejoin
-      if (prevMembership.removed_at) {
-        return NextResponse.json(
-          { error: "You were removed from this group and cannot rejoin using this link." },
-          { status: 403 }
-        );
-      }
+    let membershipActivated = false
 
-      // If exists and not removed -> already member
-      return NextResponse.json({ ok: true, message: "You are already a member of this group." });
+    if (prevMembership) {
+      // If exists and removed_at set -> allow rejoin only if invite was created AFTER removal
+      if (prevMembership.removed_at) {
+        const removedAt = new Date(prevMembership.removed_at)
+        const inviteCreatedAt = invite.created_at ? new Date(invite.created_at) : null
+
+        if (!inviteCreatedAt || inviteCreatedAt <= removedAt) {
+          // invite is old (created before removal) — block
+          return NextResponse.json(
+            { error: "You were removed from this group and cannot rejoin using this link." },
+            { status: 403 }
+          )
+        }
+
+        // invite was created after removal — reactivate existing membership row
+        const { error: reactivateErr } = await adminSupabase
+          .from("group_members")
+          .update({ removed_at: null, role: "member" })
+          .eq("group_id", invite.group_id)
+          .eq("user_id", user.id)
+
+        if (reactivateErr) {
+          console.error("reactivateErr:", reactivateErr)
+          return NextResponse.json({ error: "Failed to reactivate membership" }, { status: 500 })
+        }
+        // mark invite accepted below (continues)
+        membershipActivated = true
+      } else {
+        // If exists and not removed -> already member
+        return NextResponse.json({ ok: true, message: "You are already a member of this group." })
+      }
     }
 
-    // 5) Add user to group_members (active membership)
-    const { error: insertErr } = await adminSupabase.from("group_members").insert([
-      { group_id: invite.group_id, user_id: user.id, role: "member", removed_at: null },
-    ]);
+    // 5) Add user to group_members (active membership) only if we haven't already activated a membership
+    if (!membershipActivated) {
+      const { error: insertErr } = await adminSupabase.from("group_members").insert([
+        { group_id: invite.group_id, user_id: user.id, role: "member", removed_at: null },
+      ]);
 
-    if (insertErr) {
-      console.error("insertErr:", insertErr);
-      return NextResponse.json({ error: "Failed to add to group" }, { status: 500 });
+      if (insertErr) {
+        console.error("insertErr:", insertErr);
+        return NextResponse.json({ error: "Failed to add to group" }, { status: 500 });
+      }
     }
 
     // 6) Mark invite as accepted = true

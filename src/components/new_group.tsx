@@ -11,21 +11,20 @@ interface NewGroupModalProps {
 
 export default function NewGroupModal({ userId, onClose, onGroupCreated }: NewGroupModalProps) {
   const [name, setName] = useState("")
-  const [goal, setGoal] = useState<number | "">("")
   const [loading, setLoading] = useState(false)
 
   const handleSubmit = async () => {
-    if (!name || goal === "") {
-      alert("Please enter valid group name and goal")
+    if (!name) {
+      alert("Please enter a group name")
       return
     }
 
     setLoading(true)
 
-    // Insert new group
+    // Insert new group (no savings goal prompted; default to 0)
     const { data: newGroupData, error: insertError } = await supabase
       .from("groups")
-      .insert([{ name, savings_goal: goal }])
+      .insert([{ name, savings_goal: 0 }])
       .select()
       .single()
 
@@ -48,7 +47,13 @@ export default function NewGroupModal({ userId, onClose, onGroupCreated }: NewGr
       return
     }
 
-    onGroupCreated(newGroupData)
+    // normalize shape: ensure callers receive savings_goal and savings_curr
+    onGroupCreated({
+      id: newGroupData.id,
+      name: newGroupData.name,
+      savings_goal: newGroupData.savings_goal || 0,
+      savings_curr: newGroupData.savings_curr || 0,
+    })
     setLoading(false)
     onClose()
   }
@@ -68,17 +73,7 @@ export default function NewGroupModal({ userId, onClose, onGroupCreated }: NewGr
           />
         </label>
 
-        <label className="block mb-4">
-          Savings Goal (%):
-          <input
-            type="number"
-            min={0}
-            max={100}
-            value={goal}
-            onChange={(e) => setGoal(Number(e.target.value))}
-            className="w-full border rounded px-2 py-1 mt-1"
-          />
-        </label>
+        {/* no savings goal prompt per UX request */}
 
         <div className="flex justify-end gap-2">
           <button

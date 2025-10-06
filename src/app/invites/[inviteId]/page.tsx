@@ -42,18 +42,34 @@ export default function AcceptInvitePage() {
       setStatus("Accepting invite...")
       const accessToken = session.access_token
 
-      const res = await fetch("/api/accept-invite", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ inviteId, accessToken }),
-      })
+      try {
+        const res = await fetch("/api/accept-invite", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ inviteId, accessToken }),
+        })
 
-      if (res.ok) {
-        setStatus("Invite accepted! Redirecting...")
-        router.push("/groups") // redirect after acceptance
-      } else {
-        const err = await res.json()
-        setStatus(`Failed: ${err.message || "Unknown error"}`)
+        if (res.ok) {
+          setStatus("Invite accepted! Redirecting...")
+          router.push("/groups") // redirect after acceptance
+        } else {
+          // try parse JSON error body, be defensive
+          let errBody: any = null
+          try {
+            errBody = await res.json()
+          } catch (e) {
+            // non-json response
+            const text = await res.text().catch(() => "")
+            setStatus(`Failed: ${text || "Unknown error"}`)
+            setLoading(false)
+            return
+          }
+
+          const msg = errBody?.error || errBody?.message || errBody?.detail || JSON.stringify(errBody)
+          setStatus(`Failed: ${msg || "Unknown error"}`)
+        }
+      } catch (networkErr: any) {
+        setStatus(`Failed: ${networkErr?.message || "Network error"}`)
       }
 
       setLoading(false)

@@ -26,23 +26,34 @@ export default function InviteModal({ groupId, inviterId, onClose }: InviteModal
     setSuccessMsg("");
 
     try {
-      // Insert invite in Supabase
-      const { data: invite, error: insertError } = await supabase
-        .from("invites")
-        .insert([{ invited_email: email, group_id: groupId, inviter_id: inviterId }])
-        .select()
-        .single();
+      // Use server API to create invite and send email (server uses service role key)
+      // Get current session so we can pass an Authorization header
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-      if (insertError || !invite) throw insertError || new Error("Invite creation failed");
+      if (!session?.access_token) {
+        throw new Error("You must be signed in to invite people.");
+      }
 
-      // Call API route to send email
       const res = await fetch("/api/send-invite", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, inviteId: invite.id }),
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ email, groupId }),
       });
 
-      if (!res.ok) throw new Error("Failed to send email");
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "Failed to send invite");
+      }
+
+      const body = await res.json();
+      const invite = body.invite;
+
+      if (!invite) throw new Error("Invite creation failed on server");
 
       setSuccessMsg(`Invite sent to ${email}!`);
       setEmail(""); // clear input
